@@ -1,0 +1,1331 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Кредитный калькулятор</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-content">
+                <div class="header-info">
+                    <h1>💰 Кредитный калькулятор</h1>
+                    <p>Расчет кредитных выплат от друга</p>
+                </div>
+                <div class="user-info">
+                    <span id="userRole" class="user-role"></span>
+                    <button onclick="logout()" class="logout-btn">🚪 Выйти</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Вкладки -->
+        <div class="tabs">
+            <button class="tab-button active" onclick="showTab('calculate')">💳 Рассчитать кредит</button>
+            <button class="tab-button" onclick="showTab('history')">📋 История кредитов</button>
+            <button class="tab-button" onclick="showTab('management')" id="managementTab" style="display: none;">👥 Управление</button>
+        </div>
+
+        <div class="main-content">
+            <!-- Вкладка: Рассчитать кредит -->
+            <div id="calculate" class="tab-content">
+                <!-- Форма для создания кредита (только для кредитодателей) -->
+            <div class="form-section" id="loanFormSection">
+                <h2>📝 Новый кредит</h2>
+                <form id="loanForm">
+                    <div class="form-group">
+                        <label for="amount">Сумма кредита (₽):</label>
+                        <input type="text" id="amount" name="amount" placeholder="0 000" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="interest_rate">Процентная ставка (%):</label>
+                        <input type="number" id="interest_rate" name="interest_rate" step="0.01" min="0" max="100" value="12" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="start_date">Дата начала:</label>
+                        <input type="date" id="start_date" name="start_date" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="term_months">Срок кредита (месяцев):</label>
+                        <input type="number" id="term_months" name="term_months" min="1" max="600" value="60" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="borrower_id">Закредитованный:</label>
+                        <select id="borrower_id" name="borrower_id" required>
+                            <option value="">Выберите закредитованного...</option>
+                        </select>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">💳 Рассчитать и сохранить</button>
+                    <button type="button" id="calculateBtn" class="btn btn-secondary">🧮 Только рассчитать</button>
+                </form>
+            </div>
+
+            <!-- Результаты расчета -->
+            <div class="results-section" id="resultsSection" style="display: none;">
+                <h2>📊 Результаты расчета</h2>
+                <div class="results-grid">
+                    <div class="result-card">
+                        <h3>Ежемесячный платеж</h3>
+                        <p id="monthlyPayment">0 ₽</p>
+                    </div>
+                    <div class="result-card">
+                        <h3>Общая сумма выплат</h3>
+                        <p id="totalPayment">0 ₽</p>
+                    </div>
+                    <div class="result-card">
+                        <h3>Переплата по процентам</h3>
+                        <p id="totalInterest">0 ₽</p>
+                    </div>
+                </div>
+            </div>
+            </div>
+            
+            <!-- Вкладка: История кредитов -->
+            <div id="history" class="tab-content" style="display: none;">
+                <div class="loans-section">
+                    <h2>📋 История кредитов</h2>
+                    <div class="loans-table-container">
+                        <table id="loansTable">
+                    <thead>
+                        <tr>
+                            <th>Кредит</th>
+                            <th>Период</th>
+                            <th>Платежи</th>
+                            <th>Пересчитанный платеж</th>
+                            <th>Прогресс</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                            <tbody id="loansTableBody">
+                                <!-- Данные загружаются через JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Вкладка: Управление -->
+            <div id="management" class="tab-content" style="display: none;">
+                <div class="management-container">
+                    <!-- Секция создания закредитованного -->
+                    <div class="form-section" id="createBorrowerSection">
+                        <h2>👤 Создать нового закредитованного</h2>
+                        <div class="create-borrower-form">
+                            <form id="createBorrowerForm">
+                                <div class="form-group">
+                                    <label for="newBorrowerFullName">ФИО:</label>
+                                    <input type="text" id="newBorrowerFullName" name="full_name" placeholder="Введите ФИО (например: Иванов Иван Иванович)" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="newBorrowerUsername">Логин пользователя:</label>
+                                    <input type="text" id="newBorrowerUsername" name="username" placeholder="Введите логин пользователя" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="newBorrowerPassword">Пароль:</label>
+                                    <input type="password" id="newBorrowerPassword" name="password" placeholder="Введите пароль" required>
+                                </div>
+                                <button type="submit" class="btn btn-primary">👤 Создать закредитованного</button>
+                            </form>
+                        </div>
+                    </div>
+                    
+                    <!-- Секция существующих закредитованных -->
+                    <div class="form-section" id="borrowersListSection">
+                        <h2>👥 Существующие закредитованные</h2>
+                        <div class="borrowers-list">
+                            <div id="borrowersList" class="borrowers-grid">
+                                <!-- Список закредитованных будет загружен здесь -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно для добавления платежа -->
+    <div id="paymentModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>💳 Добавить платеж</h2>
+            <form id="paymentForm" enctype="multipart/form-data">
+                <input type="hidden" id="paymentLoanId" name="loan_id">
+                    <div class="form-group">
+                        <label for="paymentAmount">Сумма платежа (₽):</label>
+                        <input type="text" id="paymentAmount" name="amount" placeholder="0 000" required>
+                    </div>
+                <div class="form-group">
+                    <label for="paymentDate">Дата платежа:</label>
+                    <input type="date" id="paymentDate" name="payment_date" required>
+                </div>
+                <div class="form-group">
+                    <label for="paymentDocument">Прикрепить документ (чек): <span class="required">*</span></label>
+                    <input type="file" id="paymentDocument" name="file" accept=".pdf,.png,.jpg,.jpeg,.gif,.doc,.docx" required>
+                    <small class="file-help">Поддерживаемые форматы: PDF, PNG, JPG, GIF, DOC, DOCX (макс. 16MB)</small>
+                </div>
+                <button type="submit" class="btn btn-primary">💳 Добавить платеж</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Модальное окно для просмотра платежей -->
+    <div id="paymentsModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>📊 История платежей</h2>
+            <div id="paymentsList">
+                <!-- Платежи загружаются через JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно для графика платежей -->
+    <div id="chartModal" class="modal">
+        <div class="modal-content chart-modal">
+            <span class="close">&times;</span>
+            <h2>📈 График платежей</h2>
+            <div id="chartContainer">
+                <canvas id="paymentChart" width="600" height="400"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Установка текущей даты по умолчанию
+        document.getElementById('start_date').valueAsDate = new Date();
+        
+        // Форматирование суммы кредита
+        function formatAmount(input) {
+            // Удаляем все нецифровые символы
+            let value = input.value.replace(/\D/g, '');
+            
+            // Добавляем пробелы каждые 3 цифры справа
+            if (value.length > 0) {
+                value = value.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+            }
+            
+            input.value = value;
+        }
+        
+        // Обработчик для поля суммы
+        document.getElementById('amount').addEventListener('input', function(e) {
+            formatAmount(e.target);
+        });
+        
+        // Обработчик для поля суммы платежа
+        document.getElementById('paymentAmount').addEventListener('input', function(e) {
+            formatAmount(e.target);
+        });
+        
+        // Функция для получения числового значения суммы
+        function getAmountValue() {
+            const amountInput = document.getElementById('amount');
+            return parseFloat(amountInput.value.replace(/\s/g, '')) || 0;
+        }
+        
+        // Функция для получения числового значения суммы платежа
+        function getPaymentAmountValue() {
+            const amountInput = document.getElementById('paymentAmount');
+            return parseFloat(amountInput.value.replace(/\s/g, '')) || 0;
+        }
+
+        // Обработка формы
+        document.getElementById('loanForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const data = {
+                amount: getAmountValue(),
+                interest_rate: parseFloat(formData.get('interest_rate')),
+                start_date: formData.get('start_date'),
+                term_months: parseInt(formData.get('term_months')),
+                borrower_id: parseInt(formData.get('borrower_id'))
+            };
+            
+            try {
+                const response = await fetch('/api/loans', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                if (response.ok) {
+                    showNotification('✅ Кредит успешно сохранен!', 'success');
+                    this.reset();
+                    document.getElementById('start_date').valueAsDate = new Date();
+                    await loadLoansWithAnimation();
+                    hideResults();
+                } else {
+                    showNotification('❌ Ошибка при сохранении кредита', 'error');
+                }
+            } catch (error) {
+                showNotification('❌ Ошибка: ' + error.message, 'error');
+            }
+        });
+
+        // Кнопка "Только рассчитать"
+        document.getElementById('calculateBtn').addEventListener('click', async function() {
+            const formData = new FormData(document.getElementById('loanForm'));
+            const data = Object.fromEntries(formData.entries());
+            
+            if (!data.amount || !data.interest_rate || !data.term_months) {
+                alert('Заполните все поля для расчета');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/calculate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    showResults(result);
+                } else {
+                    alert('Ошибка при расчете');
+                }
+            } catch (error) {
+                alert('Ошибка: ' + error.message);
+            }
+        });
+
+        // Показать результаты
+        function showResults(result) {
+            document.getElementById('monthlyPayment').textContent = result.monthly_payment.toLocaleString('ru-RU') + ' ₽';
+            document.getElementById('totalPayment').textContent = result.total_payment.toLocaleString('ru-RU') + ' ₽';
+            document.getElementById('totalInterest').textContent = result.total_interest.toLocaleString('ru-RU') + ' ₽';
+            document.getElementById('resultsSection').style.display = 'block';
+        }
+
+        // Скрыть результаты
+        function hideResults() {
+            document.getElementById('resultsSection').style.display = 'none';
+        }
+
+        // Функции для работы с вкладками
+        function showTab(tabName) {
+            // Скрываем все вкладки
+            const tabs = document.querySelectorAll('.tab-content');
+            tabs.forEach(tab => {
+                tab.style.display = 'none';
+            });
+            
+            // Убираем активный класс со всех кнопок
+            const buttons = document.querySelectorAll('.tab-button');
+            buttons.forEach(button => {
+                button.classList.remove('active');
+            });
+            
+            // Показываем выбранную вкладку
+            const selectedTab = document.getElementById(tabName);
+            if (selectedTab) {
+                selectedTab.style.display = 'block';
+            }
+            
+            // Добавляем активный класс к кнопке
+            const activeButton = document.querySelector(`[onclick="showTab('${tabName}')"]`);
+            if (activeButton) {
+                activeButton.classList.add('active');
+            }
+            
+            // Загружаем данные для вкладки
+            if (tabName === 'calculate') {
+                // Вкладка рассчета кредита - ничего не загружаем
+            } else if (tabName === 'history') {
+                loadLoansWithAnimation();
+            } else if (tabName === 'management') {
+                loadBorrowers();
+            }
+        }
+
+        // Загрузка списка кредитов (простая версия для совместимости)
+        async function loadLoans() {
+            await loadLoansWithAnimation();
+        }
+
+        // Удаление кредита
+        async function deleteLoan(loanId) {
+            if (confirm('Вы уверены, что хотите удалить этот кредит?')) {
+                try {
+                    const response = await fetch(`/api/loans/${loanId}`, {
+                        method: 'DELETE'
+                    });
+                    
+                    if (response.ok) {
+                        showNotification('🗑️ Кредит удален', 'success');
+                        await loadLoansWithAnimation();
+                    } else {
+                        showNotification('❌ Ошибка при удалении кредита', 'error');
+                    }
+                } catch (error) {
+                    showNotification('❌ Ошибка: ' + error.message, 'error');
+                }
+            }
+        }
+
+        // Показать модальное окно для добавления платежа
+        function showPaymentModal(loanId) {
+            document.getElementById('paymentLoanId').value = loanId;
+            document.getElementById('paymentDate').valueAsDate = new Date();
+            document.getElementById('paymentModal').style.display = 'block';
+        }
+
+        // Показать историю платежей
+        async function showPaymentsHistory(loanId) {
+            try {
+                const response = await fetch(`/api/loans/${loanId}/payments`);
+                const payments = await response.json();
+                
+                const paymentsList = document.getElementById('paymentsList');
+                if (payments.length === 0) {
+                    paymentsList.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-icon">💳</div>
+                            <p>Платежи не найдены</p>
+                            <p class="empty-subtitle">Добавьте первый платеж, нажав кнопку 💳</p>
+                        </div>
+                    `;
+                } else {
+                    // Сортируем платежи по дате (новые сверху)
+                    payments.sort((a, b) => new Date(b.payment_date) - new Date(a.payment_date));
+                    
+                    const totalPaid = payments.reduce((sum, payment) => sum + payment.amount, 0);
+                    const averagePayment = totalPaid / payments.length;
+                    
+                    paymentsList.innerHTML = `
+                        <div class="payments-summary">
+                            <div class="summary-card">
+                                <div class="summary-title">Всего выплачено</div>
+                                <div class="summary-amount">${totalPaid.toLocaleString('ru-RU')} ₽</div>
+                            </div>
+                            <div class="summary-card">
+                                <div class="summary-title">Количество платежей</div>
+                                <div class="summary-amount">${payments.length}</div>
+                            </div>
+                            <div class="summary-card">
+                                <div class="summary-title">Средний платеж</div>
+                                <div class="summary-amount">${averagePayment.toLocaleString('ru-RU')} ₽</div>
+                            </div>
+                        </div>
+                        <div class="payments-timeline">
+                            <h3>📅 Хронология платежей</h3>
+                            ${payments.map((payment, index) => `
+                                <div class="timeline-item">
+                                    <div class="timeline-marker">
+                                        <div class="timeline-dot"></div>
+                                        ${index === 0 ? '<div class="timeline-line"></div>' : ''}
+                                    </div>
+                                    <div class="timeline-content">
+                                        <div class="payment-date">${new Date(payment.payment_date).toLocaleDateString('ru-RU', {
+                                            year: 'numeric',
+                                            month: 'long',
+                                            day: 'numeric'
+                                        })}</div>
+                                        <div class="payment-amount">${payment.amount.toLocaleString('ru-RU')} ₽</div>
+                                        ${payment.document_name ? 
+                                            `<div class="document-info">
+                                                <span class="document-icon">📄</span>
+                                                <a href="/${payment.document_path}" target="_blank" class="document-link">${payment.document_name}</a>
+                                            </div>` : 
+                                            '<div class="no-document">Нет документа</div>'
+                                        }
+                                        <button onclick="deletePayment(${payment.id})" class="btn btn-danger btn-xs">🗑️</button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                }
+                
+                document.getElementById('paymentsModal').style.display = 'block';
+            } catch (error) {
+                console.error('Ошибка загрузки платежей:', error);
+                alert('Ошибка загрузки платежей');
+            }
+        }
+
+        // Показать график платежей
+        function showLoanChart(loanId) {
+            console.log('Открываем график для кредита ID:', loanId);
+            const canvas = document.getElementById('paymentChart');
+            const ctx = canvas.getContext('2d');
+            
+            // Очищаем canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Показываем индикатор загрузки
+            ctx.fillStyle = '#666';
+            ctx.font = '16px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('Загрузка данных...', canvas.width / 2, canvas.height / 2);
+            
+            // Загружаем данные и рисуем график
+            fetch(`/api/loans/${loanId}/payments`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(payments => {
+                    console.log('Загружены платежи:', payments);
+                    if (payments.length === 0) {
+                        drawNoDataMessage(ctx, canvas);
+                        return;
+                    }
+                    
+                    // Сортируем платежи по дате
+                    payments.sort((a, b) => new Date(a.payment_date) - new Date(b.payment_date));
+                    
+                    // Настройки графика
+                    const padding = 60;
+                    const chartWidth = canvas.width - 2 * padding;
+                    const chartHeight = canvas.height - 2 * padding;
+                    
+                    // Находим минимум и максимум с запасом
+                    const amounts = payments.map(p => p.amount);
+                    const minAmount = Math.min(...amounts);
+                    const maxAmount = Math.max(...amounts);
+                    const range = maxAmount - minAmount || 1;
+                    const yMin = Math.max(0, minAmount - range * 0.1);
+                    const yMax = maxAmount + range * 0.1;
+                    const yRange = yMax - yMin;
+                    
+                    // Рисуем фон
+                    ctx.fillStyle = '#f8fafc';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    // Рисуем сетку
+                    drawGrid(ctx, canvas, padding, chartWidth, chartHeight, yMin, yMax);
+                    
+                    // Рисуем оси
+                    drawAxes(ctx, canvas, padding, chartWidth, chartHeight);
+                    
+                    // Рисуем график
+                    drawChart(ctx, payments, padding, chartWidth, chartHeight, yMin, yRange, canvas);
+                    
+                    // Рисуем точки с подписями
+                    drawDataPoints(ctx, payments, padding, chartWidth, chartHeight, yMin, yRange, canvas);
+                    
+                    // Подписи осей
+                    drawAxisLabels(ctx, canvas, padding, chartHeight, yMin, yMax);
+                    
+                    // Легенда
+                    drawLegend(ctx, canvas, payments);
+                })
+                .catch(error => {
+                    console.error('Ошибка загрузки данных для графика:', error);
+                    console.error('Детали ошибки:', error.message);
+                    drawErrorMessage(ctx, canvas, error.message);
+                });
+            
+            document.getElementById('chartModal').style.display = 'block';
+        }
+        
+        function drawNoDataMessage(ctx, canvas) {
+            ctx.fillStyle = '#666';
+            ctx.font = '18px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('Нет данных для отображения', canvas.width / 2, canvas.height / 2);
+        }
+        
+        function drawErrorMessage(ctx, canvas, errorMessage = 'Ошибка загрузки данных') {
+            ctx.fillStyle = '#f00';
+            ctx.font = '16px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('Ошибка загрузки данных', canvas.width / 2, canvas.height / 2 - 20);
+            
+            if (errorMessage) {
+                ctx.font = '12px Arial';
+                ctx.fillStyle = '#666';
+                ctx.fillText(errorMessage, canvas.width / 2, canvas.height / 2 + 20);
+            }
+        }
+        
+        function drawGrid(ctx, canvas, padding, chartWidth, chartHeight, yMin, yMax) {
+            ctx.strokeStyle = '#e2e8f0';
+            ctx.lineWidth = 1;
+            
+            // Горизонтальные линии
+            for (let i = 0; i <= 5; i++) {
+                const y = padding + (i / 5) * chartHeight;
+                ctx.beginPath();
+                ctx.moveTo(padding, y);
+                ctx.lineTo(padding + chartWidth, y);
+                ctx.stroke();
+            }
+            
+            // Вертикальные линии
+            for (let i = 0; i <= 10; i++) {
+                const x = padding + (i / 10) * chartWidth;
+                ctx.beginPath();
+                ctx.moveTo(x, padding);
+                ctx.lineTo(x, padding + chartHeight);
+                ctx.stroke();
+            }
+        }
+        
+        function drawAxes(ctx, canvas, padding, chartWidth, chartHeight) {
+            ctx.strokeStyle = '#2d3748';
+            ctx.lineWidth = 2;
+            
+            // Ось Y
+            ctx.beginPath();
+            ctx.moveTo(padding, padding);
+            ctx.lineTo(padding, canvas.height - padding);
+            ctx.stroke();
+            
+            // Ось X
+            ctx.beginPath();
+            ctx.moveTo(padding, canvas.height - padding);
+            ctx.lineTo(canvas.width - padding, canvas.height - padding);
+            ctx.stroke();
+        }
+        
+        function drawChart(ctx, payments, padding, chartWidth, chartHeight, yMin, yRange, canvas) {
+            ctx.strokeStyle = '#4299e1';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            
+            payments.forEach((payment, index) => {
+                const x = padding + (index / (payments.length - 1)) * chartWidth;
+                const y = canvas.height - padding - ((payment.amount - yMin) / yRange) * chartHeight;
+                
+                if (index === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            });
+            ctx.stroke();
+        }
+        
+        function drawDataPoints(ctx, payments, padding, chartWidth, chartHeight, yMin, yRange, canvas) {
+            payments.forEach((payment, index) => {
+                const x = padding + (index / (payments.length - 1)) * chartWidth;
+                const y = canvas.height - padding - ((payment.amount - yMin) / yRange) * chartHeight;
+                
+                // Точка
+                ctx.fillStyle = '#4299e1';
+                ctx.beginPath();
+                ctx.arc(x, y, 6, 0, 2 * Math.PI);
+                ctx.fill();
+                
+                // Белая обводка
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                // Подпись с суммой
+                ctx.fillStyle = '#2d3748';
+                ctx.font = '12px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(payment.amount.toLocaleString('ru-RU') + ' ₽', x, y - 15);
+                
+                // Подпись с датой
+                const date = new Date(payment.payment_date);
+                const dateStr = date.toLocaleDateString('ru-RU');
+                ctx.fillStyle = '#718096';
+                ctx.font = '10px Arial';
+                ctx.fillText(dateStr, x, y + 25);
+            });
+        }
+        
+        function drawAxisLabels(ctx, canvas, padding, chartHeight, yMin, yMax) {
+            // Подпись оси X
+            ctx.fillStyle = '#2d3748';
+            ctx.font = '14px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('Платежи по дате', canvas.width / 2, canvas.height - 10);
+            
+            // Подпись оси Y
+            ctx.save();
+            ctx.translate(20, canvas.height / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.fillText('Сумма (₽)', 0, 0);
+            ctx.restore();
+            
+            // Подписи значений на оси Y
+            ctx.fillStyle = '#718096';
+            ctx.font = '11px Arial';
+            ctx.textAlign = 'right';
+            for (let i = 0; i <= 5; i++) {
+                const value = yMin + (i / 5) * (yMax - yMin);
+                const y = canvas.height - padding - (i / 5) * chartHeight;
+                ctx.fillText(value.toLocaleString('ru-RU'), padding - 10, y + 4);
+            }
+        }
+        
+        function drawLegend(ctx, canvas, payments) {
+            const totalAmount = payments.reduce((sum, p) => sum + p.amount, 0);
+            const avgAmount = totalAmount / payments.length;
+            
+            ctx.fillStyle = '#2d3748';
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'left';
+            
+            const legendY = 30;
+            ctx.fillText(`Всего платежей: ${payments.length}`, 20, legendY);
+            ctx.fillText(`Общая сумма: ${totalAmount.toLocaleString('ru-RU')} ₽`, 20, legendY + 20);
+            ctx.fillText(`Средний платеж: ${avgAmount.toLocaleString('ru-RU')} ₽`, 20, legendY + 40);
+        }
+
+        // Добавление платежа
+        document.getElementById('paymentForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const loanId = formData.get('loan_id');
+            
+            // Проверяем, есть ли файл
+            const fileInput = document.getElementById('paymentDocument');
+            const hasFile = fileInput.files.length > 0;
+            
+            // Проверяем обязательность файла
+            if (!hasFile) {
+                showNotification('❌ Необходимо прикрепить документ (чек) для сохранения платежа', 'error');
+                return;
+            }
+            
+            // Отправляем с файлом
+            const response = await fetch('/api/payments', {
+                method: 'POST',
+                body: formData
+            });
+            
+            // Показываем индикатор загрузки
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '⏳ Обработка...';
+            submitBtn.disabled = true;
+            
+            try {
+                if (response.ok) {
+                    const result = await response.json();
+                    
+                    // Показываем успешное уведомление с информацией о перерасчете
+                    let notificationMessage = '✅ Платеж с документом успешно добавлен!';
+                    if (result.recalculation && result.recalculation.recalculated) {
+                        if (result.recalculation.remaining_amount <= 0) {
+                            notificationMessage = '🎉 Кредит полностью погашен!';
+                        } else if (result.recalculation.payment_breakdown) {
+                            const breakdown = result.recalculation.payment_breakdown;
+                            notificationMessage = `✅ Платеж с документом добавлен! Новый платеж: ${result.recalculation.new_monthly_payment.toLocaleString('ru-RU')} ₽ (Основной долг: ${breakdown.principal.toLocaleString('ru-RU')} ₽, Проценты: ${breakdown.interest.toLocaleString('ru-RU')} ₽)`;
+                        } else {
+                            notificationMessage = `✅ Платеж с документом добавлен! Новый ежемесячный платеж: ${result.recalculation.new_monthly_payment.toLocaleString('ru-RU')} ₽`;
+                        }
+                    }
+                    showNotification(notificationMessage, 'success');
+                    
+                    // Анимация обновления
+                    await animateLoanUpdate(loanId);
+                    
+                    this.reset();
+                    document.getElementById('paymentDate').valueAsDate = new Date();
+                    document.getElementById('paymentModal').style.display = 'none';
+                    
+                    // Перезагружаем данные с анимацией
+                    await loadLoansWithAnimation();
+                } else {
+                    const errorData = await response.json();
+                    showNotification(`❌ ${errorData.error || 'Ошибка при добавлении платежа'}`, 'error');
+                }
+            } catch (error) {
+                showNotification('❌ Ошибка: ' + error.message, 'error');
+            } finally {
+                // Восстанавливаем кнопку
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            }
+        });
+
+        // Удаление платежа
+        async function deletePayment(paymentId) {
+            if (confirm('Вы уверены, что хотите удалить этот платеж?')) {
+                try {
+                    const response = await fetch(`/api/payments/${paymentId}`, {
+                        method: 'DELETE'
+                    });
+                    
+                    if (response.ok) {
+                        showNotification('🗑️ Платеж удален', 'success');
+                        await loadLoansWithAnimation();
+                        
+                        // Обновляем историю платежей если модальное окно открыто
+                        const paymentsModal = document.getElementById('paymentsModal');
+                        if (paymentsModal.style.display === 'block') {
+                            const loanId = document.getElementById('paymentLoanId').value;
+                            showPaymentsHistory(loanId);
+                        }
+                    } else {
+                        showNotification('❌ Ошибка при удалении платежа', 'error');
+                    }
+                } catch (error) {
+                    showNotification('❌ Ошибка: ' + error.message, 'error');
+                }
+            }
+        }
+
+        // Закрытие модальных окон
+        document.querySelectorAll('.close').forEach(closeBtn => {
+            closeBtn.addEventListener('click', function() {
+                this.closest('.modal').style.display = 'none';
+            });
+        });
+
+        // Закрытие модальных окон при клике вне их
+        window.addEventListener('click', function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.style.display = 'none';
+            }
+        });
+
+        // Система уведомлений
+        function showNotification(message, type = 'info') {
+            // Удаляем существующие уведомления
+            const existingNotifications = document.querySelectorAll('.notification');
+            existingNotifications.forEach(notif => notif.remove());
+            
+            const notification = document.createElement('div');
+            notification.className = `notification notification-${type}`;
+            notification.innerHTML = `
+                <div class="notification-content">
+                    <span class="notification-message">${message}</span>
+                    <button class="notification-close">&times;</button>
+                </div>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // Анимация появления
+            setTimeout(() => {
+                notification.classList.add('show');
+            }, 100);
+            
+            // Автоматическое скрытие через 3 секунды
+            setTimeout(() => {
+                hideNotification(notification);
+            }, 3000);
+            
+            // Закрытие по клику
+            notification.querySelector('.notification-close').addEventListener('click', () => {
+                hideNotification(notification);
+            });
+        }
+        
+        function hideNotification(notification) {
+            notification.classList.add('hide');
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 300);
+        }
+        
+        // Анимация обновления конкретного кредита
+        async function animateLoanUpdate(loanId) {
+            const loanRow = document.querySelector(`tr[data-loan-id="${loanId}"]`);
+            if (loanRow) {
+                loanRow.classList.add('updating');
+                
+                // Анимация пульсации
+                const progressBar = loanRow.querySelector('.progress-fill');
+                if (progressBar) {
+                    progressBar.classList.add('pulse');
+                }
+                
+                // Ждем немного для визуального эффекта
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                loanRow.classList.remove('updating');
+                if (progressBar) {
+                    progressBar.classList.remove('pulse');
+                }
+            }
+        }
+        
+        // Загрузка кредитов с анимацией
+        async function loadLoansWithAnimation() {
+            const tbody = document.getElementById('loansTableBody');
+            
+            // Добавляем эффект загрузки
+            tbody.style.opacity = '0.5';
+            tbody.style.transform = 'scale(0.98)';
+            
+            try {
+                const response = await fetch('/api/loans');
+                const loans = await response.json();
+                console.log('Загружены кредиты:', loans);
+                
+                // Очищаем таблицу
+                tbody.innerHTML = '';
+                
+                // Добавляем строки с анимацией
+                for (let i = 0; i < loans.length; i++) {
+                    const loan = loans[i];
+                    const row = document.createElement('tr');
+                    row.setAttribute('data-loan-id', loan.id);
+                    
+                    // Определяем статус кредита
+                    const isCompleted = loan.progress_percent >= 100;
+                    
+                    // Расчет оставшихся месяцев (более точный расчет)
+                    const startDate = new Date(loan.start_date);
+                    const currentDate = new Date();
+                    const monthsPassed = (currentDate.getFullYear() - startDate.getFullYear()) * 12 + 
+                                       (currentDate.getMonth() - startDate.getMonth());
+                    const remainingMonths = Math.max(0, loan.term_months - monthsPassed);
+                    
+                    // Кредит просрочен, если срок истек, но не погашен полностью
+                    const isOverdue = !isCompleted && remainingMonths <= 0;
+                    const statusClass = isCompleted ? 'completed' : isOverdue ? 'overdue' : 'active';
+                    const statusIcon = isCompleted ? '✅' : isOverdue ? '⚠️' : '🔄';
+                    
+                    // Отладочная информация (можно убрать в продакшене)
+                    console.log(`Кредит ${loan.id}:`, {
+                        startDate: loan.start_date,
+                        termMonths: loan.term_months,
+                        monthsPassed,
+                        remainingMonths,
+                        isCompleted,
+                        isOverdue,
+                        progressPercent: loan.progress_percent
+                    });
+                    
+                    // Улучшенный прогресс-бар
+                    const progressBar = `
+                        <div class="progress-container">
+                            <div class="progress-header">
+                                <span class="progress-percent">${loan.progress_percent.toFixed(1)}%</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill ${statusClass}" style="width: ${Math.min(loan.progress_percent, 100)}%"></div>
+                            </div>
+                            <div class="progress-details">
+                                <div class="progress-amounts">
+                                    <span class="paid">Выплачено: ${loan.total_paid.toLocaleString('ru-RU')} ₽</span>
+                                    <span class="remaining">Осталось: ${loan.remaining_amount.toLocaleString('ru-RU')} ₽</span>
+                                </div>
+                                <div class="progress-stats">
+                                    <span class="payments-count">Платежей: ${loan.payments_count}</span>
+                                    <span class="months-left">Месяцев: ${remainingMonths}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    row.className = `loan-row ${statusClass}`;
+                    row.innerHTML = `
+                        <td>
+                            <div class="loan-amount">
+                                <div class="amount-main">${loan.amount.toLocaleString('ru-RU')} ₽</div>
+                                <div class="amount-details">Под ${loan.interest_rate}% годовых</div>
+                                <div class="user-info">
+                                    <span class="user-icon">👤</span>
+                                    <span class="user-name">${loan.user_name}</span>
+                                    <span class="user-role">(${loan.user_role_display})</span>
+                                </div>
+                                <div class="loan-status">
+                                    <span class="status-icon">${statusIcon}</span>
+                                    <span class="status-text ${statusClass}">${isCompleted ? 'Погашен' : isOverdue ? 'Просрочен' : 'Активен'}</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="loan-dates">
+                                <div class="start-date">📅 ${new Date(loan.start_date).toLocaleDateString('ru-RU')}</div>
+                                <div class="term-info">⏱️ ${loan.term_months} мес</div>
+                                <div class="remaining-time">${remainingMonths > 0 ? `Осталось: ${remainingMonths} мес` : isOverdue ? '⚠️ Срок истек' : 'Срок истек'}</div>
+                                <div class="planned-last-payment-info">📅 Последний платеж по плану: ${loan.planned_last_payment_date ? new Date(loan.planned_last_payment_date).toLocaleDateString('ru-RU') : 'Не определено'}</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="payment-info">
+                                <div class="monthly-payment">💳 ${loan.monthly_payment.toLocaleString('ru-RU')} ₽/мес</div>
+                                <div class="total-payment">💰 Всего: ${loan.total_payment.toLocaleString('ru-RU')} ₽</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="recalculated-payment-info">
+                                ${loan.payments_count > 0 ? `
+                                    <div class="recalculated-payment">
+                                        <div class="recalculated-amount">${loan.remaining_amount > 0 ? 
+                                            (loan.remaining_amount / Math.max(remainingMonths, 1)).toLocaleString('ru-RU') + ' ₽/мес' : 
+                                            'Кредит погашен'
+                                        }</div>
+                                        <div class="recalculated-breakdown">
+                                            ${loan.remaining_amount > 0 && remainingMonths > 0 ? `
+                                                <div class="breakdown-item">
+                                                    <span class="breakdown-label">📊 Основной долг:</span>
+                                                    <span class="breakdown-amount">${((loan.remaining_amount / Math.max(remainingMonths, 1)) * 0.8).toLocaleString('ru-RU')} ₽</span>
+                                                </div>
+                                                <div class="breakdown-item">
+                                                    <span class="breakdown-label">💸 Проценты:</span>
+                                                    <span class="breakdown-amount">${((loan.remaining_amount / Math.max(remainingMonths, 1)) * 0.2).toLocaleString('ru-RU')} ₽</span>
+                                                </div>
+                                            ` : ''}
+                                        </div>
+                                    </div>
+                                ` : `
+                                    <div class="no-recalculation">
+                                        <span class="no-recalc-text">Нет платежей</span>
+                                        <span class="no-recalc-subtext">Пересчет появится после первого платежа</span>
+                                    </div>
+                                `}
+                            </div>
+                        </td>
+                        <td>${progressBar}</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button onclick="showPaymentModal(${loan.id})" class="btn btn-primary btn-sm" title="Добавить платеж">💳</button>
+                                <button onclick="showPaymentsHistory(${loan.id})" class="btn btn-secondary btn-sm" title="История платежей">📊</button>
+                                <button onclick="showLoanChart(${loan.id})" class="btn btn-info btn-sm" title="График платежей">📈</button>
+                                ${'{{ user_role }}' === 'Кредитодатель' ? 
+                                    `<button onclick="deleteLoan(${loan.id})" class="btn btn-danger btn-sm" title="Удалить кредит">🗑️</button>` : 
+                                    ''
+                                }
+                            </div>
+                        </td>
+                    `;
+                    
+                    // Добавляем строку с задержкой для эффекта каскада
+                    setTimeout(() => {
+                        tbody.appendChild(row);
+                        row.classList.add('slide-in');
+                    }, i * 100);
+                }
+                
+                // Восстанавливаем нормальное состояние таблицы
+                setTimeout(() => {
+                    tbody.style.opacity = '1';
+                    tbody.style.transform = 'scale(1)';
+                }, loans.length * 100 + 200);
+                
+            } catch (error) {
+                console.error('Ошибка загрузки кредитов:', error);
+                tbody.style.opacity = '1';
+                tbody.style.transform = 'scale(1)';
+            }
+        }
+        
+        // Функция выхода
+        function logout() {
+            if (confirm('Вы уверены, что хотите выйти из системы?')) {
+                window.location.href = '/logout';
+            }
+        }
+        
+        // Отображение роли пользователя и настройка интерфейса
+        function displayUserRole() {
+            const userRoleElement = document.getElementById('userRole');
+            const userRole = '{{ user_role }}';
+            
+            if (userRoleElement) {
+                userRoleElement.textContent = userRole;
+            }
+            
+            // Настраиваем интерфейс в зависимости от роли
+            setupInterfaceForRole(userRole);
+        }
+        
+        // Настройка интерфейса в зависимости от роли
+        function setupInterfaceForRole(role) {
+            const loanFormSection = document.getElementById('loanFormSection');
+            const managementTab = document.getElementById('managementTab');
+            const createBorrowerSection = document.getElementById('createBorrowerSection');
+            const borrowersListSection = document.getElementById('borrowersListSection');
+            
+            if (role === 'Закредитованный') {
+                // Скрываем форму создания кредита и вкладку управления для закредитованных
+                if (loanFormSection) {
+                    loanFormSection.style.display = 'none';
+                }
+                if (managementTab) {
+                    managementTab.style.display = 'none';
+                }
+                if (createBorrowerSection) {
+                    createBorrowerSection.style.display = 'none';
+                }
+                if (borrowersListSection) {
+                    borrowersListSection.style.display = 'none';
+                }
+                
+                // Изменяем заголовок секции кредитов
+                const loansSection = document.querySelector('.loans-section h2');
+                if (loansSection) {
+                    loansSection.textContent = '📋 Мои кредиты';
+                }
+            } else {
+                // Показываем форму создания кредита и вкладку управления для кредитодателей
+                if (loanFormSection) {
+                    loanFormSection.style.display = 'block';
+                }
+                if (managementTab) {
+                    managementTab.style.display = 'inline-block';
+                }
+                if (createBorrowerSection) {
+                    createBorrowerSection.style.display = 'block';
+                }
+                if (borrowersListSection) {
+                    borrowersListSection.style.display = 'block';
+                }
+            }
+        }
+        
+        // Загрузка списка закредитованных
+        async function loadBorrowers() {
+            try {
+                const response = await fetch('/api/borrowers');
+                if (response.ok) {
+                    const borrowers = await response.json();
+                    
+                    // Загружаем пароли для каждого пользователя
+                    for (let borrower of borrowers) {
+                        try {
+                            const credResponse = await fetch(`/api/borrowers/${borrower.id}/credentials`);
+                            if (credResponse.ok) {
+                                const credentials = await credResponse.json();
+                                borrower.password = credentials.password;
+                            }
+                        } catch (error) {
+                            console.error(`Ошибка загрузки пароля для пользователя ${borrower.id}:`, error);
+                            borrower.password = 'password123'; // Fallback
+                        }
+                    }
+                    
+                    // Обновляем select для создания кредита
+                    const select = document.getElementById('borrower_id');
+                    if (select) {
+                        // Очищаем существующие опции
+                        select.innerHTML = '<option value="">Выберите закредитованного...</option>';
+                        
+                        // Добавляем закредитованных
+                        borrowers.forEach(borrower => {
+                            const option = document.createElement('option');
+                            option.value = borrower.id;
+                            option.textContent = borrower.full_name;
+                            select.appendChild(option);
+                        });
+                    }
+                    
+                    // Обновляем список закредитованных в админ-панели
+                    displayBorrowersList(borrowers);
+                }
+            } catch (error) {
+                console.error('Ошибка загрузки закредитованных:', error);
+            }
+        }
+        
+        // Отображение списка закредитованных
+        function displayBorrowersList(borrowers) {
+            const borrowersList = document.getElementById('borrowersList');
+            if (!borrowersList) return;
+            
+            if (borrowers.length === 0) {
+                borrowersList.innerHTML = '<p style="text-align: center; color: #718096;">Нет закредитованных пользователей</p>';
+                return;
+            }
+            
+            borrowersList.innerHTML = borrowers.map(borrower => `
+                <div class="borrower-card">
+                    <div class="borrower-name">${borrower.full_name}</div>
+                    <div class="borrower-credentials">
+                        <div class="credential-item">
+                            <span class="credential-label">👤 Логин:</span>
+                            <span class="credential-value" id="username-${borrower.id}">${borrower.username}</span>
+                            <button onclick="copyToClipboard('username-${borrower.id}')" class="copy-credential-btn" title="Копировать логин">📋</button>
+                        </div>
+                        <div class="credential-item">
+                            <span class="credential-label">🔑 Пароль:</span>
+                            <span class="credential-value" id="password-${borrower.id}">••••••••</span>
+                            <button onclick="togglePassword(${borrower.id}, '${borrower.password}')" class="toggle-password-btn" title="Показать/скрыть пароль">👁️</button>
+                            <button onclick="copyToClipboard('password-${borrower.id}')" class="copy-credential-btn" title="Копировать пароль">📋</button>
+                        </div>
+                        <div class="borrower-id">ID: ${borrower.id}</div>
+                    </div>
+                    <div class="borrower-actions">
+                        <button onclick="deleteBorrower(${borrower.id}, '${borrower.full_name}')" 
+                                class="btn btn-danger btn-sm" 
+                                title="Удалить закредитованного">
+                            🗑️ Удалить
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // Обработка создания нового закредитованного
+        document.getElementById('createBorrowerForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const data = {
+                full_name: formData.get('full_name'),
+                username: formData.get('username'),
+                password: formData.get('password')
+            };
+            
+            try {
+                const response = await fetch('/api/borrowers', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    // Показываем данные для входа
+                    showCredentials(result.credentials);
+                    
+                    // Очищаем форму
+                    this.reset();
+                    
+                    // Обновляем список закредитованных
+                    loadBorrowers();
+                    
+                    showNotification(`✅ ${result.message}`, 'success');
+                } else {
+                    showNotification(`❌ ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showNotification(`❌ Ошибка сети: ${error.message}`, 'error');
+            }
+        });
+        
+        // Показ данных для входа
+        function showCredentials(credentials) {
+            const form = document.getElementById('createBorrowerForm');
+            let credentialsDisplay = form.querySelector('.credentials-display');
+            
+            if (!credentialsDisplay) {
+                credentialsDisplay = document.createElement('div');
+                credentialsDisplay.className = 'credentials-display';
+                form.appendChild(credentialsDisplay);
+            }
+            
+            credentialsDisplay.innerHTML = `
+                <h4>📋 Данные для входа созданы!</h4>
+                <div class="full-name">👤 ФИО: ${credentials.full_name}</div>
+                <div class="username">👤 Логин: ${credentials.username}</div>
+                <div class="password">🔑 Пароль: ${credentials.password}</div>
+                <button class="copy-btn" onclick="copyCredentials('${credentials.full_name}', '${credentials.username}', '${credentials.password}')">
+                    📋 Скопировать данные
+                </button>
+            `;
+            
+            // Автоматически скрываем через 30 секунд
+            setTimeout(() => {
+                if (credentialsDisplay.parentNode) {
+                    credentialsDisplay.remove();
+                }
+            }, 30000);
+        }
+        
+        // Копирование данных для входа
+        function copyCredentials(fullName, username, password) {
+            const text = `ФИО: ${fullName}\nЛогин: ${username}\nПароль: ${password}`;
+            navigator.clipboard.writeText(text).then(() => {
+                showNotification('📋 Данные скопированы в буфер обмена!', 'success');
+            }).catch(() => {
+                showNotification('❌ Не удалось скопировать данные', 'error');
+            });
+        }
+        
+        // Копирование в буфер обмена
+        function copyToClipboard(elementId) {
+            const element = document.getElementById(elementId);
+            const text = element.textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                showNotification('📋 Скопировано в буфер обмена!', 'success');
+            }).catch(() => {
+                showNotification('❌ Не удалось скопировать', 'error');
+            });
+        }
+        
+        // Переключение видимости пароля
+        function togglePassword(borrowerId, realPassword) {
+            const passwordElement = document.getElementById(`password-${borrowerId}`);
+            const button = event.target;
+            
+            if (passwordElement.textContent === '••••••••') {
+                passwordElement.textContent = realPassword;
+                button.textContent = '🙈';
+                button.title = 'Скрыть пароль';
+            } else {
+                passwordElement.textContent = '••••••••';
+                button.textContent = '👁️';
+                button.title = 'Показать пароль';
+            }
+        }
+        
+        // Удаление закредитованного пользователя
+        async function deleteBorrower(borrowerId, borrowerName) {
+            const confirmed = confirm(
+                `⚠️ ВНИМАНИЕ!\n\n` +
+                `Вы собираетесь удалить закредитованного пользователя "${borrowerName}".\n\n` +
+                `Это действие удалит:\n` +
+                `• Пользователя "${borrowerName}"\n` +
+                `• Все его кредиты\n` +
+                `• Все платежи по этим кредитам\n` +
+                `• Все прикрепленные документы\n\n` +
+                `Это действие НЕОБРАТИМО!\n\n` +
+                `Продолжить?`
+            );
+            
+            if (!confirmed) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/borrowers/${borrowerId}`, {
+                    method: 'DELETE'
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showNotification(`✅ ${result.message}`, 'success');
+                    
+                    // Обновляем список закредитованных
+                    loadBorrowers();
+                    
+                    // Обновляем список кредитов
+                    loadLoansWithAnimation();
+                } else {
+                    showNotification(`❌ ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showNotification(`❌ Ошибка сети: ${error.message}`, 'error');
+            }
+        }
+        
+        // Загрузка данных при загрузке страницы
+        document.addEventListener('DOMContentLoaded', function() {
+            displayUserRole();
+            
+            // Показываем вкладку "Рассчитать кредит" по умолчанию
+            showTab('calculate');
+            
+            // Устанавливаем текущую дату по умолчанию
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('start_date').value = today;
+        });
+    </script>
+</body>
+</html>
