@@ -28,6 +28,11 @@ RUN mkdir -p static/uploads
 
 # Create non-root user
 RUN adduser --disabled-password --gecos '' appuser
+
+# Create database file if it doesn't exist and set permissions
+RUN touch /app/loans.db && chown appuser:appuser /app/loans.db
+
+# Set permissions for the entire app directory
 RUN chown -R appuser:appuser /app
 USER appuser
 

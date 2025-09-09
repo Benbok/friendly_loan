@@ -12,7 +12,7 @@ services:
       - REDIS_URL=redis://redis:6379/0
     volumes:
       - ./static/uploads:/app/static/uploads
-      - ./loans.db:/app/loans.db
+      - ./loans.db:/app/loans.db:rw
     depends_on:
       - redis
     restart: unless-stopped

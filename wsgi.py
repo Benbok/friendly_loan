@@ -11,7 +11,10 @@ load_dotenv()
 # Set environment
 os.environ.setdefault('FLASK_ENV', 'production')
 
-from app import app
+from app import app, init_db
+
+# Initialize database on startup
+init_db()
 
 if __name__ == "__main__":
     app.run()
