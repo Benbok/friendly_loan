@@ -39,15 +39,15 @@ def create_default_users():
     if cursor.fetchone()[0] == 0:
         # Создаем кредитодателя
         cursor.execute('''
-            INSERT INTO users (username, password_hash, role)
-            VALUES (?, ?, ?)
-        ''', ('lender', hash_password('lender123'), 'lender'))
+            INSERT INTO users (username, password_hash, role, original_password)
+            VALUES (?, ?, ?, ?)
+        ''', ('lender', hash_password('lender123'), 'lender', 'lender123'))
         
         # Создаем закредитованного
         cursor.execute('''
-            INSERT INTO users (username, password_hash, role)
-            VALUES (?, ?, ?)
-        ''', ('borrower', hash_password('borrower123'), 'borrower'))
+            INSERT INTO users (username, password_hash, role, original_password)
+            VALUES (?, ?, ?, ?)
+        ''', ('borrower', hash_password('borrower123'), 'borrower', 'borrower123'))
         
         conn.commit()
     
@@ -77,24 +77,22 @@ def get_borrowers():
     """Получить список всех закредитованных пользователей"""
     conn = sqlite3.connect('loans.db')
     cursor = conn.cursor()
-    cursor.execute('SELECT id, username, full_name FROM users WHERE role = "borrower"')
+    cursor.execute('SELECT id, username, full_name, original_password FROM users WHERE role = "borrower"')
     borrowers = cursor.fetchall()
     conn.close()
     
-    return [{'id': borrower[0], 'username': borrower[1], 'full_name': borrower[2] or borrower[1]} for borrower in borrowers]
+    return [{'id': borrower[0], 'username': borrower[1], 'full_name': borrower[2] or borrower[1], 'password': borrower[3] or 'Не установлен'} for borrower in borrowers]
 
 def get_borrower_credentials(borrower_id):
     """Получить учетные данные закредитованного пользователя"""
     conn = sqlite3.connect('loans.db')
     cursor = conn.cursor()
-    cursor.execute('SELECT username, password_hash FROM users WHERE id = ? AND role = "borrower"', (borrower_id,))
+    cursor.execute('SELECT username, original_password FROM users WHERE id = ? AND role = "borrower"', (borrower_id,))
     result = cursor.fetchone()
     conn.close()
     
     if result:
-        # Для демонстрации возвращаем стандартный пароль
-        # В реальном приложении пароли не должны храниться в открытом виде
-        return {'username': result[0], 'password': 'password123'}
+        return {'username': result[0], 'password': result[1] or 'Не установлен'}
     return None
 
 def create_borrower(username, password, full_name):
@@ -111,9 +109,9 @@ def create_borrower(username, password, full_name):
     # Создаем нового пользователя
     password_hash = hash_password(password)
     cursor.execute('''
-        INSERT INTO users (username, password_hash, role, full_name)
-        VALUES (?, ?, 'borrower', ?)
-    ''', (username, password_hash, full_name))
+        INSERT INTO users (username, password_hash, role, full_name, original_password)
+        VALUES (?, ?, 'borrower', ?, ?)
+    ''', (username, password_hash, full_name, password))
     
     user_id = cursor.lastrowid
     conn.commit()
@@ -287,6 +285,15 @@ def init_db():
     
     # Заполняем full_name для существующих пользователей
     cursor.execute("UPDATE users SET full_name = username WHERE full_name IS NULL")
+    
+    # Миграция: добавляем поле original_password для хранения оригинального пароля
+    try:
+        cursor.execute("ALTER TABLE users ADD COLUMN original_password TEXT")
+    except sqlite3.OperationalError:
+        pass  # Колонка уже существует
+    
+    # Заполняем original_password для существующих пользователей (если не заполнено)
+    cursor.execute("UPDATE users SET original_password = 'password123' WHERE original_password IS NULL")
     
     conn.commit()
     conn.close()
@@ -717,7 +724,6 @@ def delete_loan(loan_id):
 
 @app.route('/api/payments', methods=['POST'])
 @login_required
-@role_required('borrower')
 def add_payment():
     """Добавить платеж по кредиту"""
     # Проверяем, есть ли файл в запросе
@@ -753,13 +759,21 @@ def add_payment():
         # Если нет файла, возвращаем ошибку
         return jsonify({'error': 'Необходимо прикрепить документ (чек) для сохранения платежа'}), 400
     
-    # Проверяем, существует ли кредит
+    # Проверяем, существует ли кредит и есть ли права доступа
     conn = sqlite3.connect('loans.db')
     cursor = conn.cursor()
-    cursor.execute('SELECT id FROM loans WHERE id = ?', (loan_id,))
+    user_id = session['user_id']
+    user_role = session['user_role']
+    
+    # Проверяем права доступа к кредиту
+    if user_role == 'lender':
+        cursor.execute('SELECT id FROM loans WHERE id = ? AND lender_id = ?', (loan_id, user_id))
+    else:  # borrower
+        cursor.execute('SELECT id FROM loans WHERE id = ? AND borrower_id = ?', (loan_id, user_id))
+    
     if not cursor.fetchone():
         conn.close()
-        return jsonify({'error': 'Кредит не найден'}), 404
+        return jsonify({'error': 'Кредит не найден или нет прав доступа'}), 404
     
     # Добавляем платеж
     cursor.execute('''
@@ -821,19 +835,36 @@ def get_loan_payments(loan_id):
     return jsonify(result)
 
 @app.route('/api/payments/<int:payment_id>', methods=['DELETE'])
+@login_required
 def delete_payment(payment_id):
     """Удалить платеж"""
     conn = sqlite3.connect('loans.db')
     cursor = conn.cursor()
+    user_id = session['user_id']
+    user_role = session['user_role']
     
-    # Получаем loan_id перед удалением
-    cursor.execute('SELECT loan_id FROM payments WHERE id = ?', (payment_id,))
+    # Получаем loan_id и проверяем права доступа
+    cursor.execute('''
+        SELECT p.loan_id, l.lender_id, l.borrower_id 
+        FROM payments p 
+        JOIN loans l ON p.loan_id = l.id 
+        WHERE p.id = ?
+    ''', (payment_id,))
     result = cursor.fetchone()
+    
     if not result:
         conn.close()
         return jsonify({'error': 'Платеж не найден'}), 404
     
-    loan_id = result[0]
+    loan_id, lender_id, borrower_id = result
+    
+    # Проверяем права доступа
+    if user_role == 'lender' and user_id != lender_id:
+        conn.close()
+        return jsonify({'error': 'Нет прав доступа к этому платежу'}), 403
+    elif user_role == 'borrower' and user_id != borrower_id:
+        conn.close()
+        return jsonify({'error': 'Нет прав доступа к этому платежу'}), 403
     
     # Удаляем платеж
     cursor.execute('DELETE FROM payments WHERE id = ?', (payment_id,))

@@ -23,7 +23,7 @@
 
         <!-- Вкладки -->
         <div class="tabs">
-            <button class="tab-button active" onclick="showTab('calculate')">💳 Рассчитать кредит</button>
+            <button class="tab-button active" onclick="showTab('calculate')" id="calculateTab">💳 Рассчитать кредит</button>
             <button class="tab-button" onclick="showTab('history')">📋 История кредитов</button>
             <button class="tab-button" onclick="showTab('management')" id="managementTab" style="display: none;">👥 Управление</button>
         </div>
@@ -1045,16 +1045,20 @@
         function setupInterfaceForRole(role) {
             const loanFormSection = document.getElementById('loanFormSection');
             const managementTab = document.getElementById('managementTab');
+            const calculateTab = document.getElementById('calculateTab');
             const createBorrowerSection = document.getElementById('createBorrowerSection');
             const borrowersListSection = document.getElementById('borrowersListSection');
             
             if (role === 'Закредитованный') {
-                // Скрываем форму создания кредита и вкладку управления для закредитованных
+                // Скрываем форму создания кредита, вкладку рассчета и вкладку управления для закредитованных
                 if (loanFormSection) {
                     loanFormSection.style.display = 'none';
                 }
                 if (managementTab) {
                     managementTab.style.display = 'none';
+                }
+                if (calculateTab) {
+                    calculateTab.style.display = 'none';
                 }
                 if (createBorrowerSection) {
                     createBorrowerSection.style.display = 'none';
@@ -1068,6 +1072,9 @@
                 if (loansSection) {
                     loansSection.textContent = '📋 Мои кредиты';
                 }
+                
+                // Показываем вкладку "История кредитов" по умолчанию для закредитованных
+                showTab('history');
             } else {
                 // Показываем форму создания кредита и вкладку управления для кредитодателей
                 if (loanFormSection) {
@@ -1076,12 +1083,18 @@
                 if (managementTab) {
                     managementTab.style.display = 'inline-block';
                 }
+                if (calculateTab) {
+                    calculateTab.style.display = 'inline-block';
+                }
                 if (createBorrowerSection) {
                     createBorrowerSection.style.display = 'block';
                 }
                 if (borrowersListSection) {
                     borrowersListSection.style.display = 'block';
                 }
+                
+                // Показываем вкладку "Рассчитать кредит" по умолчанию для кредитодателей
+                showTab('calculate');
             }
         }
         
@@ -1318,9 +1331,6 @@
         // Загрузка данных при загрузке страницы
         document.addEventListener('DOMContentLoaded', function() {
             displayUserRole();
-            
-            // Показываем вкладку "Рассчитать кредит" по умолчанию
-            showTab('calculate');
             
             // Устанавливаем текущую дату по умолчанию
             const today = new Date().toISOString().split('T')[0];
