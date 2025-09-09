@@ -948,13 +948,14 @@
                             <p class="empty-subtitle">Обратитесь к кредитодателю для создания кредита</p>
                         </div>`;
                     
-                    tbody.innerHTML = `
-                        <tr>
-                            <td colspan="6" class="empty-state">
-                                ${emptyContent}
-                            </td>
-                        </tr>
-                    `;
+                    // Создаем строку безопасно
+                    const row = document.createElement('tr');
+                    const cell = document.createElement('td');
+                    cell.colSpan = 6;
+                    cell.className = 'empty-state';
+                    cell.innerHTML = emptyContent;
+                    row.appendChild(cell);
+                    tbody.appendChild(row);
                 } else {
                     // Добавляем строки с анимацией
                     for (let i = 0; i < loans.length; i++) {
@@ -1470,6 +1471,7 @@
         
         // Загрузка данных при загрузке страницы
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('Main page script loaded');
             loadTheme();
             displayUserRole();
             

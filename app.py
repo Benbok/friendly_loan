@@ -1,15 +1,89 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session
+from flask_wtf.csrf import CSRFProtect
+from flask_talisman import Talisman
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from wtforms import Form, StringField, IntegerField, FloatField, validators
 import sqlite3
 import json
 import re
 import os
 import hashlib
+import bcrypt
+import secrets
 from datetime import datetime, timedelta
 from decimal import Decimal, ROUND_HALF_UP
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
-app.secret_key = 'your-secret-key-change-in-production'
+# Генерируем случайный секретный ключ
+app.secret_key = secrets.token_hex(32)
+
+# Временно отключаем CSRF защиту для отладки
+# csrf = CSRFProtect(app)
+
+# API эндпоинт для входа
+@app.route('/api/login', methods=['POST'])
+def api_login():
+    """API для входа в систему"""
+    # Проверяем, это JSON или форма
+    if request.is_json:
+        data = request.get_json()
+        username = data.get('username')
+        password = data.get('password')
+    else:
+        # Обычная форма
+        username = request.form.get('username')
+        password = request.form.get('password')
+    
+    conn = sqlite3.connect('loans.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT id, username, password_hash, role FROM users WHERE username = ?', (username,))
+    user = cursor.fetchone()
+    conn.close()
+    
+    if user and verify_password(password, user[2]):
+        session['user_id'] = user[0]
+        session['username'] = user[1]
+        session['user_role'] = user[3]
+        
+        # Если это JSON запрос, возвращаем JSON
+        if request.is_json:
+            return jsonify({'success': True, 'role': user[3]})
+        else:
+            # Если это форма, перенаправляем на главную страницу
+            return redirect(url_for('index'))
+    else:
+        if request.is_json:
+            return jsonify({'error': 'Неверное имя пользователя или пароль'}), 401
+        else:
+            return render_template('login.html', error='Неверное имя пользователя или пароль')
+
+# Временно отключаем security headers для отладки
+# Talisman(app, force_https=False)  # force_https=False для разработки
+
+# Временно отключаем rate limiting для отладки
+# limiter = Limiter(
+#     key_func=get_remote_address,
+#     default_limits=["200 per day", "50 per hour"]
+# )
+# limiter.init_app(app)
+
+# Формы валидации
+class LoginForm(Form):
+    username = StringField('Username', [validators.Length(min=3, max=20), validators.Regexp(r'^[a-zA-Z0-9_]+$', message='Только буквы, цифры и подчеркивания')])
+    password = StringField('Password', [validators.Length(min=4, max=100)])
+
+class CreateBorrowerForm(Form):
+    username = StringField('Username', [validators.Length(min=3, max=20), validators.Regexp(r'^[a-zA-Z0-9_]+$', message='Только буквы, цифры и подчеркивания')])
+    password = StringField('Password', [validators.Length(min=4, max=100)])
+    full_name = StringField('Full Name', [validators.Length(min=2, max=100), validators.Regexp(r'^[а-яА-Яa-zA-Z\s]+$', message='Только буквы и пробелы')])
+
+class LoanForm(Form):
+    amount = IntegerField('Amount', [validators.NumberRange(min=1000, max=10000000, message='Сумма от 1,000 до 10,000,000')])
+    interest_rate = FloatField('Interest Rate', [validators.NumberRange(min=0, max=50, message='Процентная ставка от 0 до 50')])
+    term_months = IntegerField('Term Months', [validators.NumberRange(min=1, max=600, message='Срок от 1 до 600 месяцев')])
+    borrower_id = IntegerField('Borrower ID', [validators.NumberRange(min=1, message='Неверный ID закредитованного')])
 
 # Настройки для загрузки файлов
 UPLOAD_FOLDER = 'static/uploads'
@@ -22,12 +96,59 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 def allowed_file(filename):
     """Проверяет, разрешен ли тип файла"""
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+    if not filename or '.' not in filename:
+        return False
+    
+    # Проверяем расширение
+    ext = filename.rsplit('.', 1)[1].lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        return False
+    
+    # Проверяем длину имени файла
+    if len(filename) > 255:
+        return False
+    
+    # Проверяем на подозрительные символы
+    suspicious_chars = ['..', '/', '\\', '<', '>', ':', '"', '|', '?', '*']
+    for char in suspicious_chars:
+        if char in filename:
+            return False
+    
+    return True
+
+def validate_file_content(file, filename):
+    """Дополнительная проверка содержимого файла"""
+    # Проверяем размер файла
+    file.seek(0, 2)  # Переходим в конец файла
+    file_size = file.tell()
+    file.seek(0)  # Возвращаемся в начало
+    
+    if file_size > app.config['MAX_CONTENT_LENGTH']:
+        return False, "Файл слишком большой"
+    
+    if file_size == 0:
+        return False, "Файл пустой"
+    
+    # Читаем первые байты для проверки MIME типа
+    header = file.read(1024)
+    file.seek(0)
+    
+    # Простая проверка по магическим байтам
+    if filename.lower().endswith('.pdf') and not header.startswith(b'%PDF'):
+        return False, "Файл не является PDF"
+    
+    if filename.lower().endswith(('.png', '.jpg', '.jpeg')) and not header.startswith(b'\xff\xd8\xff'):
+        return False, "Файл не является изображением"
+    
+    return True, "OK"
 
 def hash_password(password):
-    """Хеширует пароль"""
-    return hashlib.sha256(password.encode()).hexdigest()
+    """Безопасно хеширует пароль с помощью bcrypt"""
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+def verify_password(password, hashed):
+    """Проверяет пароль против хеша"""
+    return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
 
 def create_default_users():
     """Создает пользователей по умолчанию"""
@@ -39,15 +160,15 @@ def create_default_users():
     if cursor.fetchone()[0] == 0:
         # Создаем кредитодателя
         cursor.execute('''
-            INSERT INTO users (username, password_hash, role, original_password)
-            VALUES (?, ?, ?, ?)
-        ''', ('lender', hash_password('lender123'), 'lender', 'lender123'))
+            INSERT INTO users (username, password_hash, role)
+            VALUES (?, ?, ?)
+        ''', ('lender', hash_password('lender123'), 'lender'))
         
         # Создаем закредитованного
         cursor.execute('''
-            INSERT INTO users (username, password_hash, role, original_password)
-            VALUES (?, ?, ?, ?)
-        ''', ('borrower', hash_password('borrower123'), 'borrower', 'borrower123'))
+            INSERT INTO users (username, password_hash, role)
+            VALUES (?, ?, ?)
+        ''', ('borrower', hash_password('borrower123'), 'borrower'))
         
         conn.commit()
     
@@ -77,22 +198,22 @@ def get_borrowers():
     """Получить список всех закредитованных пользователей"""
     conn = sqlite3.connect('loans.db')
     cursor = conn.cursor()
-    cursor.execute('SELECT id, username, full_name, original_password FROM users WHERE role = "borrower"')
+    cursor.execute('SELECT id, username, full_name FROM users WHERE role = "borrower"')
     borrowers = cursor.fetchall()
     conn.close()
     
-    return [{'id': borrower[0], 'username': borrower[1], 'full_name': borrower[2] or borrower[1], 'password': borrower[3] or 'Не установлен'} for borrower in borrowers]
+    return [{'id': borrower[0], 'username': borrower[1], 'full_name': borrower[2] or borrower[1]} for borrower in borrowers]
 
 def get_borrower_credentials(borrower_id):
     """Получить учетные данные закредитованного пользователя"""
     conn = sqlite3.connect('loans.db')
     cursor = conn.cursor()
-    cursor.execute('SELECT username, original_password FROM users WHERE id = ? AND role = "borrower"', (borrower_id,))
+    cursor.execute('SELECT username FROM users WHERE id = ? AND role = "borrower"', (borrower_id,))
     result = cursor.fetchone()
     conn.close()
     
     if result:
-        return {'username': result[0], 'password': result[1] or 'Не установлен'}
+        return {'username': result[0], 'password': 'Сгенерирован при создании'}
     return None
 
 def create_borrower(username, password, full_name):
@@ -109,9 +230,9 @@ def create_borrower(username, password, full_name):
     # Создаем нового пользователя
     password_hash = hash_password(password)
     cursor.execute('''
-        INSERT INTO users (username, password_hash, role, full_name, original_password)
-        VALUES (?, ?, 'borrower', ?, ?)
-    ''', (username, password_hash, full_name, password))
+        INSERT INTO users (username, password_hash, role, full_name)
+        VALUES (?, ?, 'borrower', ?)
+    ''', (username, password_hash, full_name))
     
     user_id = cursor.lastrowid
     conn.commit()
@@ -286,14 +407,11 @@ def init_db():
     # Заполняем full_name для существующих пользователей
     cursor.execute("UPDATE users SET full_name = username WHERE full_name IS NULL")
     
-    # Миграция: добавляем поле original_password для хранения оригинального пароля
+    # Миграция: удаляем поле original_password (больше не нужно)
     try:
-        cursor.execute("ALTER TABLE users ADD COLUMN original_password TEXT")
+        cursor.execute("ALTER TABLE users DROP COLUMN original_password")
     except sqlite3.OperationalError:
-        pass  # Колонка уже существует
-    
-    # Заполняем original_password для существующих пользователей (если не заполнено)
-    cursor.execute("UPDATE users SET original_password = 'password123' WHERE original_password IS NULL")
+        pass  # Колонка уже удалена или не существует
     
     conn.commit()
     conn.close()
@@ -433,7 +551,7 @@ def login():
         user = cursor.fetchone()
         conn.close()
         
-        if user and user[2] == hash_password(password):
+        if user and verify_password(password, user[2]):
             session['user_id'] = user[0]
             session['username'] = user[1]
             session['user_role'] = user[3]
@@ -741,6 +859,11 @@ def add_payment():
         # Проверяем тип файла
         if not allowed_file(file.filename):
             return jsonify({'error': 'Неподдерживаемый тип файла. Разрешены: PDF, PNG, JPG, JPEG, GIF, DOC, DOCX'}), 400
+        
+        # Дополнительная проверка содержимого файла
+        is_valid, error_msg = validate_file_content(file, file.filename)
+        if not is_valid:
+            return jsonify({'error': f'Ошибка валидации файла: {error_msg}'}), 400
         
         # Генерируем уникальное имя файла
         filename = secure_filename(file.filename)
