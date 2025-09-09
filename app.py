@@ -11,13 +11,27 @@ import os
 import hashlib
 import bcrypt
 import secrets
+import logging
 from datetime import datetime, timedelta
 from decimal import Decimal, ROUND_HALF_UP
 from werkzeug.utils import secure_filename
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 app = Flask(__name__)
-# Генерируем случайный секретный ключ
-app.secret_key = secrets.token_hex(32)
+
+# Configuration
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', secrets.token_hex(32))
+app.config['UPLOAD_FOLDER'] = os.environ.get('UPLOAD_FOLDER', 'static/uploads')
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB
+
+# Logging configuration
+logging.basicConfig(
+    level=os.environ.get('LOG_LEVEL', 'INFO'),
+    format='%(asctime)s %(levelname)s %(name)s %(message)s'
+)
 
 # Временно отключаем CSRF защиту для отладки
 # csrf = CSRFProtect(app)
@@ -1012,6 +1026,18 @@ def get_loan_recalculation(loan_id):
     
     return jsonify(recalculation)
 
+@app.route('/health')
+def health_check():
+    """Health check endpoint for load balancers"""
+    return jsonify({
+        'status': 'healthy',
+        'timestamp': datetime.now().isoformat(),
+        'version': '1.0.0'
+    }), 200
+
 if __name__ == '__main__':
     init_db()
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    port = int(os.environ.get('PORT', 5000))
+    host = os.environ.get('HOST', '0.0.0.0')
+    debug = os.environ.get('FLASK_ENV') != 'production'
+    app.run(debug=debug, host=host, port=port)

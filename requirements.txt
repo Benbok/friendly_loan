@@ -1,7 +1,28 @@
+# Web Framework
 Flask==2.3.3
 Werkzeug==2.3.7
+
+# Security
 bcrypt==4.3.0
 Flask-WTF==1.2.2
 Flask-Talisman==1.1.0
 Flask-Limiter==3.12
 WTForms==3.2.1
+
+# Production WSGI Server
+gunicorn==21.2.0
+
+# Database
+SQLAlchemy==2.0.23
+
+# Environment Variables
+python-dotenv==1.0.0
+
+# Logging
+structlog==23.2.0
+
+# Monitoring (optional)
+sentry-sdk[flask]==1.38.0
+
+# Redis for rate limiting (optional)
+redis==5.0.1
