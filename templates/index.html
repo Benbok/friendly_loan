@@ -15,6 +15,7 @@
                     <p>Расчет кредитных выплат от друга</p>
                 </div>
                 <div class="user-info">
+                    <button onclick="toggleTheme()" class="theme-toggle-btn" title="Переключить тему">🌙</button>
                     <span id="userRole" class="user-role"></span>
                     <button onclick="logout()" class="logout-btn">🚪 Выйти</button>
                 </div>
@@ -22,15 +23,18 @@
         </header>
 
         <!-- Вкладки -->
-        <div class="tabs">
-            <button class="tab-button active" onclick="showTab('calculate')" id="calculateTab">💳 Рассчитать кредит</button>
-            <button class="tab-button" onclick="showTab('history')">📋 История кредитов</button>
-            <button class="tab-button" onclick="showTab('management')" id="managementTab" style="display: none;">👥 Управление</button>
+        <div class="tabs" role="tablist" aria-label="Основные разделы приложения">
+            <button class="tab-button active" onclick="showTab('calculate')" id="calculateTab" 
+                    role="tab" aria-selected="true" aria-controls="calculate" aria-label="Рассчитать новый кредит">💳 Рассчитать кредит</button>
+            <button class="tab-button" onclick="showTab('history')" id="historyTab"
+                    role="tab" aria-selected="false" aria-controls="history" aria-label="Просмотр истории кредитов">📋 История кредитов</button>
+            <button class="tab-button" onclick="showTab('management')" id="managementTab" style="display: none;"
+                    role="tab" aria-selected="false" aria-controls="management" aria-label="Управление закредитованными пользователями">👥 Управление</button>
         </div>
 
         <div class="main-content">
             <!-- Вкладка: Рассчитать кредит -->
-            <div id="calculate" class="tab-content">
+            <div id="calculate" class="tab-content" role="tabpanel" aria-labelledby="calculateTab" aria-hidden="false">
                 <!-- Форма для создания кредита (только для кредитодателей) -->
             <div class="form-section" id="loanFormSection">
                 <h2>📝 Новый кредит</h2>
@@ -88,7 +92,7 @@
             </div>
             
             <!-- Вкладка: История кредитов -->
-            <div id="history" class="tab-content" style="display: none;">
+            <div id="history" class="tab-content" role="tabpanel" aria-labelledby="historyTab" aria-hidden="true" style="display: none;">
                 <div class="loans-section">
                     <h2>📋 История кредитов</h2>
                     <div class="loans-table-container">
@@ -112,7 +116,7 @@
             </div>
             
             <!-- Вкладка: Управление -->
-            <div id="management" class="tab-content" style="display: none;">
+            <div id="management" class="tab-content" role="tabpanel" aria-labelledby="managementTab" aria-hidden="true" style="display: none;">
                 <div class="management-container">
                     <!-- Секция создания закредитованного -->
                     <div class="form-section" id="createBorrowerSection">
@@ -151,10 +155,10 @@
     </div>
 
     <!-- Модальное окно для добавления платежа -->
-    <div id="paymentModal" class="modal">
+    <div id="paymentModal" class="modal" role="dialog" aria-labelledby="paymentModalTitle" aria-hidden="true">
         <div class="modal-content">
-            <span class="close">&times;</span>
-            <h2>💳 Добавить платеж</h2>
+            <span class="close" aria-label="Закрыть модальное окно">&times;</span>
+            <h2 id="paymentModalTitle">💳 Добавить платеж</h2>
             <form id="paymentForm" enctype="multipart/form-data">
                 <input type="hidden" id="paymentLoanId" name="loan_id">
                     <div class="form-group">
@@ -176,10 +180,10 @@
     </div>
 
     <!-- Модальное окно для просмотра платежей -->
-    <div id="paymentsModal" class="modal">
+    <div id="paymentsModal" class="modal" role="dialog" aria-labelledby="paymentsModalTitle" aria-hidden="true">
         <div class="modal-content">
-            <span class="close">&times;</span>
-            <h2>📊 История платежей</h2>
+            <span class="close" aria-label="Закрыть модальное окно">&times;</span>
+            <h2 id="paymentsModalTitle">📊 История платежей</h2>
             <div id="paymentsList">
                 <!-- Платежи загружаются через JavaScript -->
             </div>
@@ -187,10 +191,10 @@
     </div>
 
     <!-- Модальное окно для графика платежей -->
-    <div id="chartModal" class="modal">
+    <div id="chartModal" class="modal" role="dialog" aria-labelledby="chartModalTitle" aria-hidden="true">
         <div class="modal-content chart-modal">
-            <span class="close">&times;</span>
-            <h2>📈 График платежей</h2>
+            <span class="close" aria-label="Закрыть модальное окно">&times;</span>
+            <h2 id="chartModalTitle">📈 График платежей</h2>
             <div id="chartContainer">
                 <canvas id="paymentChart" width="600" height="400"></canvas>
             </div>
@@ -321,24 +325,28 @@
             const tabs = document.querySelectorAll('.tab-content');
             tabs.forEach(tab => {
                 tab.style.display = 'none';
+                tab.setAttribute('aria-hidden', 'true');
             });
             
             // Убираем активный класс со всех кнопок
             const buttons = document.querySelectorAll('.tab-button');
             buttons.forEach(button => {
                 button.classList.remove('active');
+                button.setAttribute('aria-selected', 'false');
             });
             
             // Показываем выбранную вкладку
             const selectedTab = document.getElementById(tabName);
             if (selectedTab) {
                 selectedTab.style.display = 'block';
+                selectedTab.setAttribute('aria-hidden', 'false');
             }
             
             // Добавляем активный класс к кнопке
             const activeButton = document.querySelector(`[onclick="showTab('${tabName}')"]`);
             if (activeButton) {
                 activeButton.classList.add('active');
+                activeButton.setAttribute('aria-selected', 'true');
             }
             
             // Загружаем данные для вкладки
@@ -380,7 +388,11 @@
         function showPaymentModal(loanId) {
             document.getElementById('paymentLoanId').value = loanId;
             document.getElementById('paymentDate').valueAsDate = new Date();
-            document.getElementById('paymentModal').style.display = 'block';
+            const modal = document.getElementById('paymentModal');
+            modal.style.display = 'block';
+            modal.setAttribute('aria-hidden', 'false');
+            // Фокус на первое поле формы
+            document.getElementById('paymentAmount').focus();
         }
 
         // Показать историю платежей
@@ -394,7 +406,8 @@
                     paymentsList.innerHTML = `
                         <div class="empty-state">
                             <div class="empty-icon">💳</div>
-                            <p>Платежи не найдены</p>
+                            <h3>Нет платежей</h3>
+                            <p>По этому кредиту пока нет платежей</p>
                             <p class="empty-subtitle">Добавьте первый платеж, нажав кнопку 💳</p>
                         </div>
                     `;
@@ -450,7 +463,9 @@
                     `;
                 }
                 
-                document.getElementById('paymentsModal').style.display = 'block';
+                const modal = document.getElementById('paymentsModal');
+                modal.style.display = 'block';
+                modal.setAttribute('aria-hidden', 'false');
             } catch (error) {
                 console.error('Ошибка загрузки платежей:', error);
                 alert('Ошибка загрузки платежей');
@@ -460,6 +475,10 @@
         // Показать график платежей
         function showLoanChart(loanId) {
             console.log('Открываем график для кредита ID:', loanId);
+            const modal = document.getElementById('chartModal');
+            modal.style.display = 'block';
+            modal.setAttribute('aria-hidden', 'false');
+            
             const canvas = document.getElementById('paymentChart');
             const ctx = canvas.getContext('2d');
             
@@ -735,16 +754,40 @@
                     
                     this.reset();
                     document.getElementById('paymentDate').valueAsDate = new Date();
-                    document.getElementById('paymentModal').style.display = 'none';
+                    const modal = document.getElementById('paymentModal');
+                    modal.style.display = 'none';
+                    modal.setAttribute('aria-hidden', 'true');
                     
                     // Перезагружаем данные с анимацией
                     await loadLoansWithAnimation();
                 } else {
                     const errorData = await response.json();
-                    showNotification(`❌ ${errorData.error || 'Ошибка при добавлении платежа'}`, 'error');
+                    let errorMessage = errorData.error || 'Неизвестная ошибка';
+                    
+                    // Детализируем ошибки
+                    if (errorMessage.includes('Необходимо прикрепить документ')) {
+                        errorMessage = '⚠️ Необходимо прикрепить документ (чек) для сохранения платежа';
+                    } else if (errorMessage.includes('Неподдерживаемый тип файла')) {
+                        errorMessage = '⚠️ Неподдерживаемый тип файла. Разрешены: PDF, PNG, JPG, JPEG, GIF, DOC, DOCX';
+                    } else if (errorMessage.includes('Кредит не найден')) {
+                        errorMessage = '⚠️ Кредит не найден или нет прав доступа';
+                    }
+                    
+                    showNotification(`❌ ${errorMessage}`, 'error');
                 }
             } catch (error) {
-                showNotification('❌ Ошибка: ' + error.message, 'error');
+                console.error('Ошибка при добавлении платежа:', error);
+                
+                let errorMessage = 'Ошибка сети';
+                if (error.message.includes('Failed to fetch')) {
+                    errorMessage = 'Ошибка сети: Проверьте подключение к интернету';
+                } else if (error.message.includes('TypeError')) {
+                    errorMessage = 'Ошибка обработки данных';
+                } else {
+                    errorMessage = `Ошибка: ${error.message}`;
+                }
+                
+                showNotification(`❌ ${errorMessage}`, 'error');
             } finally {
                 // Восстанавливаем кнопку
                 submitBtn.innerHTML = originalText;
@@ -782,8 +825,18 @@
         // Закрытие модальных окон
         document.querySelectorAll('.close').forEach(closeBtn => {
             closeBtn.addEventListener('click', function() {
-                this.closest('.modal').style.display = 'none';
+                const modal = this.closest('.modal');
+                modal.style.display = 'none';
+                modal.setAttribute('aria-hidden', 'true');
             });
+        });
+        
+        // Закрытие модальных окон по клику вне их
+        window.addEventListener('click', function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.style.display = 'none';
+                event.target.setAttribute('aria-hidden', 'true');
+            }
         });
 
         // Закрытие модальных окон при клике вне их
@@ -867,14 +920,44 @@
             
             try {
                 const response = await fetch('/api/loans');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
                 const loans = await response.json();
                 console.log('Загружены кредиты:', loans);
                 
                 // Очищаем таблицу
                 tbody.innerHTML = '';
                 
-                // Добавляем строки с анимацией
-                for (let i = 0; i < loans.length; i++) {
+                // Проверяем, есть ли кредиты
+                if (loans.length === 0) {
+                    const userRole = document.getElementById('userRole').textContent;
+                    const emptyContent = userRole === 'Кредитодатель' ? 
+                        `<div class="empty-state">
+                            <div class="empty-icon">💳</div>
+                            <h3>Нет кредитов</h3>
+                            <p>Создайте первый кредит, чтобы начать работу</p>
+                            <button onclick="showTab('calculate')" class="btn btn-primary">💳 Создать кредит</button>
+                        </div>` :
+                        `<div class="empty-state">
+                            <div class="empty-icon">📋</div>
+                            <h3>Нет кредитов</h3>
+                            <p>У вас пока нет активных кредитов</p>
+                            <p class="empty-subtitle">Обратитесь к кредитодателю для создания кредита</p>
+                        </div>`;
+                    
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="6" class="empty-state">
+                                ${emptyContent}
+                            </td>
+                        </tr>
+                    `;
+                } else {
+                    // Добавляем строки с анимацией
+                    for (let i = 0; i < loans.length; i++) {
                     const loan = loans[i];
                     const row = document.createElement('tr');
                     row.setAttribute('data-loan-id', loan.id);
@@ -989,12 +1072,16 @@
                         </td>
                         <td>${progressBar}</td>
                         <td>
-                            <div class="action-buttons">
-                                <button onclick="showPaymentModal(${loan.id})" class="btn btn-primary btn-sm" title="Добавить платеж">💳</button>
-                                <button onclick="showPaymentsHistory(${loan.id})" class="btn btn-secondary btn-sm" title="История платежей">📊</button>
-                                <button onclick="showLoanChart(${loan.id})" class="btn btn-info btn-sm" title="График платежей">📈</button>
+                            <div class="action-buttons" role="group" aria-label="Действия с кредитом">
+                                <button onclick="showPaymentModal(${loan.id})" class="btn btn-primary btn-sm" 
+                                        title="Добавить платеж" aria-label="Добавить платеж для кредита ${loan.id}">💳</button>
+                                <button onclick="showPaymentsHistory(${loan.id})" class="btn btn-secondary btn-sm" 
+                                        title="История платежей" aria-label="Показать историю платежей для кредита ${loan.id}">📊</button>
+                                <button onclick="showLoanChart(${loan.id})" class="btn btn-info btn-sm" 
+                                        title="График платежей" aria-label="Показать график платежей для кредита ${loan.id}">📈</button>
                                 ${'{{ user_role }}' === 'Кредитодатель' ? 
-                                    `<button onclick="deleteLoan(${loan.id})" class="btn btn-danger btn-sm" title="Удалить кредит">🗑️</button>` : 
+                                    `<button onclick="deleteLoan(${loan.id})" class="btn btn-danger btn-sm" 
+                                            title="Удалить кредит" aria-label="Удалить кредит ${loan.id}">🗑️</button>` : 
                                     ''
                                 }
                             </div>
@@ -1008,14 +1095,42 @@
                     }, i * 100);
                 }
                 
-                // Восстанавливаем нормальное состояние таблицы
-                setTimeout(() => {
-                    tbody.style.opacity = '1';
-                    tbody.style.transform = 'scale(1)';
-                }, loans.length * 100 + 200);
+                    // Восстанавливаем нормальное состояние таблицы
+                    setTimeout(() => {
+                        tbody.style.opacity = '1';
+                        tbody.style.transform = 'scale(1)';
+                    }, loans.length * 100 + 200);
+                }
                 
             } catch (error) {
                 console.error('Ошибка загрузки кредитов:', error);
+                
+                // Показываем детальную ошибку
+                let errorMessage = 'Ошибка загрузки кредитов';
+                if (error.message.includes('HTTP')) {
+                    errorMessage = `Ошибка сервера: ${error.message}`;
+                } else if (error.message.includes('Failed to fetch')) {
+                    errorMessage = 'Ошибка сети: Проверьте подключение к интернету';
+                } else {
+                    errorMessage = `Ошибка: ${error.message}`;
+                }
+                
+                showNotification(`❌ ${errorMessage}`, 'error');
+                
+                // Показываем пустое состояние с ошибкой
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="error-state">
+                            <div class="empty-state">
+                                <div class="empty-icon">⚠️</div>
+                                <p>Не удалось загрузить кредиты</p>
+                                <p class="empty-subtitle">${errorMessage}</p>
+                                <button onclick="loadLoansWithAnimation()" class="btn btn-primary">🔄 Попробовать снова</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                
                 tbody.style.opacity = '1';
                 tbody.style.transform = 'scale(1)';
             }
@@ -1328,8 +1443,34 @@
             }
         }
         
+        // Переключение темы
+        function toggleTheme() {
+            const body = document.body;
+            const currentTheme = body.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            
+            body.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            
+            // Обновляем иконку кнопки
+            const themeBtn = document.querySelector('.theme-toggle-btn');
+            themeBtn.textContent = newTheme === 'dark' ? '☀️' : '🌙';
+            themeBtn.title = newTheme === 'dark' ? 'Переключить на светлую тему' : 'Переключить на темную тему';
+        }
+        
+        // Загрузка сохраненной темы
+        function loadTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.body.setAttribute('data-theme', savedTheme);
+            
+            const themeBtn = document.querySelector('.theme-toggle-btn');
+            themeBtn.textContent = savedTheme === 'dark' ? '☀️' : '🌙';
+            themeBtn.title = savedTheme === 'dark' ? 'Переключить на светлую тему' : 'Переключить на темную тему';
+        }
+        
         // Загрузка данных при загрузке страницы
         document.addEventListener('DOMContentLoaded', function() {
+            loadTheme();
             displayUserRole();
             
             // Устанавливаем текущую дату по умолчанию

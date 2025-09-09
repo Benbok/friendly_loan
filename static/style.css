@@ -1,3 +1,28 @@
+/* CSS переменные для тем */
+:root {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f7fafc;
+    --bg-tertiary: #edf2f7;
+    --text-primary: #2d3748;
+    --text-secondary: #4a5568;
+    --text-muted: #718096;
+    --border-color: #e2e8f0;
+    --shadow: 0 10px 30px rgba(0,0,0,0.2);
+    --shadow-light: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+[data-theme="dark"] {
+    --bg-primary: #1a202c;
+    --bg-secondary: #2d3748;
+    --bg-tertiary: #4a5568;
+    --text-primary: #f7fafc;
+    --text-secondary: #e2e8f0;
+    --text-muted: #a0aec0;
+    --border-color: #4a5568;
+    --shadow: 0 10px 30px rgba(0,0,0,0.4);
+    --shadow-light: 0 2px 8px rgba(0,0,0,0.2);
+}
+
 /* Общие стили */
 * {
     margin: 0;
@@ -9,7 +34,8 @@ body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     min-height: 100vh;
-    color: #333;
+    color: var(--text-primary);
+    transition: color 0.3s ease, background 0.3s ease;
 }
 
 .container {
@@ -82,6 +108,23 @@ header p {
     transform: translateY(-1px);
 }
 
+.theme-toggle-btn {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+}
+
+.theme-toggle-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-1px);
+}
+
 /* Основной контент */
 .main-content {
     display: grid;
@@ -100,11 +143,11 @@ header p {
 .form-section,
 .results-section,
 .loans-section {
-    background: white;
+    background: var(--bg-primary);
     border-radius: 15px;
     padding: 30px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-    transition: transform 0.3s ease;
+    box-shadow: var(--shadow);
+    transition: transform 0.3s ease, background 0.3s ease;
 }
 
 .form-section:hover,
@@ -117,10 +160,11 @@ header p {
 .results-section h2,
 .loans-section h2 {
     margin-bottom: 25px;
-    color: #4a5568;
+    color: var(--text-secondary);
     font-size: 1.5rem;
     border-bottom: 3px solid #667eea;
     padding-bottom: 10px;
+    transition: color 0.3s ease;
 }
 
 /* Форма */
@@ -132,16 +176,19 @@ header p {
     display: block;
     margin-bottom: 8px;
     font-weight: 600;
-    color: #4a5568;
+    color: var(--text-secondary);
+    transition: color 0.3s ease;
 }
 
 .form-group input {
     width: 100%;
     padding: 12px 15px;
-    border: 2px solid #e2e8f0;
+    border: 2px solid var(--border-color);
     border-radius: 8px;
     font-size: 16px;
-    transition: border-color 0.3s ease;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    transition: border-color 0.3s ease, background 0.3s ease, color 0.3s ease;
 }
 
 .form-group input:focus {
@@ -346,9 +393,10 @@ header p {
 
 .progress-fill {
     height: 100%;
-    transition: width 0.5s ease;
+    transition: width 0.3s ease;
     border-radius: 12px;
     position: relative;
+    will-change: width;
 }
 
 .progress-fill.completed {
@@ -1224,24 +1272,66 @@ select option {
 .empty-state {
     text-align: center;
     padding: 40px 20px;
-    color: #718096;
+    color: var(--text-muted);
+    background: var(--bg-secondary);
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    transition: all 0.3s ease;
+}
+
+.empty-state h3 {
+    color: var(--text-secondary);
+    font-size: 18px;
+    margin: 15px 0 10px 0;
+    font-weight: 600;
 }
 
 .empty-icon {
     font-size: 48px;
     margin-bottom: 15px;
+    opacity: 0.8;
 }
 
 .empty-subtitle {
     font-size: 14px;
     margin-top: 10px;
-    color: #a0aec0;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.empty-state .btn {
+    margin-top: 20px;
+    padding: 12px 24px;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+/* Состояние ошибки */
+.error-state {
+    text-align: center;
+    padding: 40px 20px;
+    background: linear-gradient(135deg, #fff5f5 0%, #fed7d7 100%);
+    border-radius: 12px;
+    border: 1px solid #feb2b2;
+}
+
+.error-state .empty-icon {
+    color: #e53e3e;
+}
+
+.error-state .empty-subtitle {
+    color: #c53030;
+    font-weight: 500;
+}
+
+.error-state .btn {
+    margin-top: 15px;
 }
 
 /* Анимации для модальных окон */
 @keyframes slideIn {
     from {
-        transform: translateY(-50px);
+        transform: translateY(-30px);
         opacity: 0;
     }
     to {
@@ -1275,7 +1365,8 @@ select option {
     max-width: 400px;
     transform: translateX(100%);
     opacity: 0;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
+    will-change: transform, opacity;
 }
 
 .notification.show {
@@ -1339,9 +1430,10 @@ select option {
 
 /* Анимации для строк таблицы */
 .loan-row {
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
     transform: translateY(0);
     opacity: 1;
+    will-change: transform, opacity;
 }
 
 .loan-row.slide-in {
@@ -1376,7 +1468,8 @@ select option {
 
 /* Анимация прогресс-бара */
 .progress-fill {
-    transition: width 0.8s ease-in-out;
+    transition: width 0.3s ease-out;
+    will-change: width;
 }
 
 .progress-fill.pulse {
@@ -1395,6 +1488,7 @@ select option {
 /* Анимация кнопок */
 .btn {
     transition: all 0.2s ease;
+    will-change: transform, box-shadow;
 }
 
 .btn:disabled {
@@ -1410,7 +1504,8 @@ select option {
 
 /* Анимация для модальных окон */
 .modal-content {
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
+    will-change: transform, opacity;
 }
 
 .modal.show .modal-content {
