@@ -23,17 +23,21 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy project
 COPY . .
 
-# Create uploads directory
-RUN mkdir -p static/uploads
-
 # Create non-root user
 RUN adduser --disabled-password --gecos '' appuser
 
+# Create uploads directory with proper permissions
+RUN mkdir -p static/uploads
+
 # Create database file if it doesn't exist and set permissions
-RUN touch /app/loans.db && chown appuser:appuser /app/loans.db
+RUN touch /app/loans.db
 
 # Set permissions for the entire app directory
 RUN chown -R appuser:appuser /app
+
+# Ensure uploads directory is writable by appuser
+RUN chmod 755 static/uploads
+
 USER appuser
 
 # Expose port

@@ -27,6 +27,12 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', secrets.token_hex(32))
 app.config['UPLOAD_FOLDER'] = os.environ.get('UPLOAD_FOLDER', 'static/uploads')
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB
 
+# Session configuration
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)  # Сессия на 24 часа
+app.config['SESSION_COOKIE_SECURE'] = False  # Для HTTP (не HTTPS)
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+
 # Logging configuration
 logging.basicConfig(
     level=os.environ.get('LOG_LEVEL', 'INFO'),
@@ -60,6 +66,7 @@ def api_login():
         session['user_id'] = user[0]
         session['username'] = user[1]
         session['user_role'] = user[3]
+        session.permanent = True  # Делаем сессию постоянной
         
         # Если это JSON запрос, возвращаем JSON
         if request.is_json:
@@ -569,6 +576,7 @@ def login():
             session['user_id'] = user[0]
             session['username'] = user[1]
             session['user_role'] = user[3]
+            session.permanent = True  # Делаем сессию постоянной
             return jsonify({'success': True, 'role': user[3]})
         else:
             return jsonify({'error': 'Неверное имя пользователя или пароль'}), 401
@@ -858,6 +866,10 @@ def delete_loan(loan_id):
 @login_required
 def add_payment():
     """Добавить платеж по кредиту"""
+    # Убеждаемся, что папка uploads существует
+    upload_folder = app.config['UPLOAD_FOLDER']
+    os.makedirs(upload_folder, exist_ok=True)
+    
     # Проверяем, есть ли файл в запросе
     if 'file' in request.files:
         # Обработка с файлом
@@ -887,7 +899,12 @@ def add_payment():
         
         # Сохраняем файл
         file_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
-        file.save(file_path)
+        try:
+            file.save(file_path)
+        except PermissionError as e:
+            return jsonify({'error': f'Ошибка сохранения файла: недостаточно прав доступа. {str(e)}'}), 500
+        except Exception as e:
+            return jsonify({'error': f'Ошибка сохранения файла: {str(e)}'}), 500
         
         # Сохраняем относительный путь для веб-доступа
         document_path = os.path.join('static', 'uploads', unique_filename).replace('\\', '/')
