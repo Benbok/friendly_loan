@@ -467,17 +467,17 @@ def recalculate_loan_after_payment(loan_id):
     payments = cursor.fetchall()
     
     total_paid = sum(payment[0] for payment in payments)
-    remaining_amount = loan[6] - total_paid  # total_payment - total_paid
+    remaining_amount = loan[8] - total_paid  # total_payment - total_paid (индекс 8)
     
     # Рассчитываем оставшиеся месяцы
     try:
-        start_date = datetime.strptime(str(loan[3]), '%Y-%m-%d')
+        start_date = datetime.strptime(str(loan[5]), '%Y-%m-%d')  # start_date (индекс 5)
         current_date = datetime.now()
         months_passed = (current_date.year - start_date.year) * 12 + (current_date.month - start_date.month)
-        months_remaining = max(0, loan[4] - months_passed)  # term_months - months_passed
+        months_remaining = max(0, loan[6] - months_passed)  # term_months - months_passed (индекс 6)
     except (ValueError, TypeError):
         # Если не можем распарсить дату, используем весь срок
-        months_remaining = loan[4]
+        months_remaining = loan[6]  # term_months (индекс 6)
     
     # Если кредит полностью погашен
     if remaining_amount <= 0:
@@ -509,7 +509,7 @@ def recalculate_loan_after_payment(loan_id):
         }
     
     # Пересчитываем ежемесячный платеж на оставшуюся сумму
-    monthly_rate = loan[2] / 100 / 12  # interest_rate / 100 / 12
+    monthly_rate = loan[4] / 100 / 12  # interest_rate / 100 / 12 (индекс 4)
     if monthly_rate == 0:
         new_monthly_payment = remaining_amount / months_remaining
         payment_breakdown = {
@@ -671,14 +671,14 @@ def get_loan_progress(loan_id):
     payments = cursor.fetchall()
     
     total_paid = sum(payment[0] for payment in payments)
-    remaining_amount = loan[6] - total_paid  # total_payment - total_paid
-    progress_percent = (total_paid / loan[6]) * 100 if loan[6] > 0 else 0
+    remaining_amount = loan[8] - total_paid  # total_payment - total_paid (индекс 8)
+    progress_percent = (total_paid / loan[8]) * 100 if loan[8] > 0 else 0
     
     # Получаем дату последнего платежа
     last_payment_date = payments[-1][1] if payments else None
     
     # Рассчитываем дату последнего запланированного платежа
-    planned_last_payment_date = calculate_last_payment_date(loan[3], loan[4])
+    planned_last_payment_date = calculate_last_payment_date(loan[5], loan[6])  # start_date (5), term_months (6)
     
     conn.close()
     
@@ -753,16 +753,16 @@ def get_loans():
             user_role_display = 'Кредитодатель'
         
         result.append({
-            'id': safe_int(loan[0]),
-            'amount': safe_int(loan[1]),
-            'interest_rate': safe_float(loan[2]),
-            'start_date': safe_str(loan[3]),
-            'term_months': safe_int(loan[4]),
-            'monthly_payment': safe_int(loan[5]),
-            'total_payment': safe_int(loan[6]),
-            'created_at': safe_str(loan[7]),
-            'lender_id': safe_int(loan[8]),
-            'borrower_id': safe_int(loan[9]),
+            'id': safe_int(loan[0]),           # id
+            'amount': safe_int(loan[3]),        # amount
+            'interest_rate': safe_float(loan[4]), # interest_rate
+            'start_date': safe_str(loan[5]),    # start_date
+            'term_months': safe_int(loan[6]),   # term_months
+            'monthly_payment': safe_int(loan[7]), # monthly_payment
+            'total_payment': safe_int(loan[8]), # total_payment
+            'created_at': safe_str(loan[9]),    # created_at
+            'lender_id': safe_int(loan[1]),     # lender_id
+            'borrower_id': safe_int(loan[2]),   # borrower_id
             'user_name': user_name,
             'user_role_display': user_role_display,
             'total_paid': progress['total_paid'],
